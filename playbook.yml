@@ -1,0 +1,61 @@
+---
+- hosts: all
+  become: True
+  tasks:
+    - include: tasks/deps.yml
+
+    # your code goes here ...
+#    - name: Update Package Lists
+#      yum:
+#        name: '*'
+#        state: latest
+    - name: Install runit repository
+      shell: curl -s https://packagecloud.io/install/repositories/imeyer/runit/script.rpm.sh | sudo bash
+      args:
+        warn: False
+    - name: ensure nginx, nano, ufw is at the latest version
+      yum:
+        name:
+          - nginx
+          - nano
+          - ufw
+          - runit
+        state: latest
+    - name: adjust firewall for https
+      ufw:
+        state: enabled
+        rule: allow
+        name: WWW Full
+    - file:
+        path: /etc/nginx/ssl/
+        state: directory
+    - name: copying nginx.conf
+      copy:
+        src: config/nginx.conf
+        dest: /etc/nginx/nginx.conf
+    - name: copying host file
+      copy:
+        src: config/hosts
+        dest: /etc/hosts
+        force: yes
+    - name: copying self-signed.crt
+      copy:
+        src: files/self-signed.crt
+        dest: /etc/nginx/ssl/self-signed.crt
+        #owner: foo
+        #group: foo
+        #mode: 0644
+    - name: copying self-signed.key
+      copy:
+        src: files/self-signed.key
+        dest: /etc/nginx/ssl/self-signed.key
+    - file:
+        path: /opt/application/
+        state: directory
+    - name: copy and Extract application.zip
+      unarchive:
+        src: application.zip
+        dest: /opt/application/
+    - service:
+        name: nginx
+        state: started
